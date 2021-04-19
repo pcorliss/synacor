@@ -95,4 +95,17 @@ describe SynacorVm do
       end
     end
   end
+
+  describe "#parse_program" do
+    it "each number is stored as a 16-bit little-endian pair (low byte, high byte)" do
+      vm.parse_program(File.read('challenge.bin').slice(0,100))
+      expect(vm.program.first(8)).to eq([21,21,19,87,19,101,19,108])
+    end
+
+    it "can parse the entire challenge file" do
+      expect do
+        vm.parse_program(File.read('challenge.bin'))
+      end.to_not raise_error
+    end
+  end
 end

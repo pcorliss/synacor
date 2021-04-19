@@ -29,7 +29,7 @@ class SynacorVm
       print a_val.chr
     when 21 #noop
     else
-      puts "Unhandled OpCode encountered: ${op}"
+      puts "Unhandled OpCode encountered: #{op}"
       @halt = true
     end
   end
@@ -40,5 +40,10 @@ class SynacorVm
       op ||= 0
       step(op)
     end
+  end
+
+  def parse_program(input)
+    # vax little-endian 16-bit
+    @program = input.unpack('v*')
   end
 end
