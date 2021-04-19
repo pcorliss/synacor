@@ -1,11 +1,12 @@
 class SynacorVm
-  attr_reader :registers, :program, :halt, :pos
+  attr_reader :registers, :program, :halt, :pos, :stack
 
   def initialize(input = '')
     @registers = 8.times.map { 0 }
     @program = input.split(',').map(&:to_i)
     @halt = false
     @pos = 0
+    @stack = []
   end
 
   def get_arg
@@ -19,18 +20,80 @@ class SynacorVm
     case op
     when 0 # halt
       @halt = true
+    when 1 # set
+      a, _ = get_arg
+      _, b_val = get_arg
+      @registers[a - 32768] = b_val
+    when 2 # push
+      _, a_val = get_arg
+      @stack.push(a_val)
+    when 3 # pop
+      a, _ = get_arg
+      raise "Stack Empty!" if @stack.empty?
+      @registers[a - 32768] = @stack.pop
+    when 4 # eq
+      a, _ = get_arg
+      _, b_val = get_arg
+      _, c_val = get_arg
+      @registers[a - 32768] = b_val == c_val ? 1 : 0
+    when 5 # eq
+      a, _ = get_arg
+      _, b_val = get_arg
+      _, c_val = get_arg
+      @registers[a - 32768] = b_val > c_val ? 1 : 0
+    when 6 # jmp
+      _, a_val = get_arg
+      @pos = a_val
+    when 7 # jt
+      _, a_val = get_arg
+      _, b_val = get_arg
+      @pos = b_val if !a_val.zero?
+    when 8 # jf
+      _, a_val = get_arg
+      _, b_val = get_arg
+      @pos = b_val if a_val.zero?
     when 9 # add
       a, _ = get_arg
       _, b_val = get_arg
       _, c_val = get_arg
       @registers[a - 32768] = (b_val + c_val) % 32768
+    when 10 # mult
+      a, _ = get_arg
+      _, b_val = get_arg
+      _, c_val = get_arg
+      @registers[a - 32768] = (b_val * c_val) % 32768
+    when 11 # mod
+      a, _ = get_arg
+      _, b_val = get_arg
+      _, c_val = get_arg
+      @registers[a - 32768] = b_val % c_val
+    when 12 # and
+      a, _ = get_arg
+      _, b_val = get_arg
+      _, c_val = get_arg
+      @registers[a - 32768] = b_val & c_val
+    when 13 # or
+      a, _ = get_arg
+      _, b_val = get_arg
+      _, c_val = get_arg
+      @registers[a - 32768] = b_val | c_val
+    when 14 # not - 15-bit inverse
+      a, _ = get_arg
+      _, b_val = get_arg
+      val = 0
+      15.times do |n|
+        val += 2**n if b_val[n] == 0
+      end
+      @registers[a - 32768] = val
     when 19 # out
       _, a_val = get_arg
       print a_val.chr
     when 21 #noop
     else
-      puts "Unhandled OpCode encountered: #{op}"
-      @halt = true
+      puts "Unhandled OpCode encountered: #{op} @ #{@pos}"
+      puts "Potential Args: #{get_arg} #{get_arg} #{get_arg}"
+      @pos -= 3
+      # @halt = true
     end
   end
 
