@@ -239,6 +239,45 @@ describe SynacorVm do
         expect(vm.registers[0]).to eq(32767)
       end
     end
+
+    describe '#call' do
+      it 'write the address of the next instruction to the stack and jump to <a>' do
+        vm.program.unshift(0, 21)
+        vm.step(17)
+        expect(vm.pos).to eq(0)
+        expect(vm.stack).to eq([1])
+      end
+    end
+
+    describe '#rmem' do
+      it 'read memory at address <b> and write it to <a>' do
+        vm.program.unshift(32768, 2, 99)
+        vm.step(15)
+        expect(vm.registers[0]).to eq(99)
+      end
+    end
+
+    describe '#wmem' do
+      it 'write the value from <b> into memory at address <a>' do
+        vm.program.unshift(99, 2)
+        vm.step(16)
+        expect(vm.program[99]).to eq(2)
+      end
+    end
+
+    describe '#ret' do
+      it 'remove the top element from the stack and jump to it' do
+        vm.stack.push(99)
+        vm.step(18)
+        expect(vm.stack).to be_empty
+        expect(vm.pos).to eq(99)
+      end
+
+      it 'if the stack is empty halt' do
+        vm.step(18)
+        expect(vm.halt).to be_truthy
+      end
+    end
   end
 
   describe "#parse_program" do

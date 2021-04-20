@@ -85,6 +85,24 @@ class SynacorVm
         val += 2**n if b_val[n] == 0
       end
       @registers[a - 32768] = val
+    when 15 # rmem
+      a, _ = get_arg
+      _, b_val = get_arg
+      @registers[a - 32768] = @program[b_val]
+    when 16 # wmem
+      _, a_val = get_arg
+      _, b_val = get_arg
+      @program[a_val] = b_val
+    when 17 # call
+      _, a_val = get_arg
+      @stack.push(@pos)
+      @pos = a_val
+    when 18 # ret
+      if @stack.empty?
+        @halt = true
+      else
+        @pos = @stack.pop
+      end
     when 19 # out
       _, a_val = get_arg
       print a_val.chr
