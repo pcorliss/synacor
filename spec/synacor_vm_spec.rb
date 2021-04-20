@@ -309,4 +309,20 @@ describe SynacorVm do
       end.to_not raise_error
     end
   end
+
+  describe '#record' do
+    it 'turns on the recording flag' do
+      expect(vm.recording).to be_falsey
+      vm.record
+      expect(vm.recording).to be_truthy
+    end
+
+    it 'records STDIN to buffer' do
+      vm.record
+      allow(STDIN).to receive(:gets).and_return("hello world\n", "is the news\n")
+      100.times { vm.program.unshift(32768) }
+      24.times { vm.step(20) }
+      expect(vm.recorded).to eq("hello world\nis the news\n")
+    end
+  end
 end

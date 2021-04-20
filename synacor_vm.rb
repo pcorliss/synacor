@@ -1,5 +1,8 @@
+require 'pry'
+require 'set'
+
 class SynacorVm
-  attr_reader :registers, :program, :halt, :pos, :stack
+  attr_reader :registers, :program, :halt, :pos, :stack, :recording, :recorded
 
   def initialize(input = '')
     @registers = 8.times.map { 0 }
@@ -8,6 +11,9 @@ class SynacorVm
     @pos = 0
     @stack = []
     @stdin_buffer = []
+    @recording = false
+    @recorded = ''
+    @wmem = Set.new
   end
 
   def get_arg
@@ -93,6 +99,8 @@ class SynacorVm
     when 16 # wmem
       _, a_val = get_arg
       _, b_val = get_arg
+      # @wmem.add(a_val)
+      # puts "Mem: #{a_val} = #{b_val}" if @debug
       @program[a_val] = b_val
     when 17 # call
       _, a_val = get_arg
@@ -109,10 +117,20 @@ class SynacorVm
       print a_val.chr
     when 20 # in
       # puts "Prog: #{@program[@pos...(@pos+10)]}"
-      # puts "Reg: #{@registers}"
       a, _ = get_arg
       if @stdin_buffer.empty?
-        @stdin_buffer = STDIN.gets().chars.map(&:ord)
+        # puts "Regst: #{@registers}" if @debug
+        # puts "Stack: #{@stack}" if @debug
+        # puts "Posit: #{@pos}" if @debug
+        puts "Memor: #{@program[2733]}" if @debug
+        str = STDIN.gets()
+        str = cheat if str == "cheat\n"
+        if str == "debug\n"
+          str = "\n"
+          binding.pry
+        end
+        @stdin_buffer = str.chars.map(&:ord)
+        @recorded << str if @recording
       end
       @registers[a - 32768] = @stdin_buffer.shift
     when 21 #noop
@@ -124,12 +142,30 @@ class SynacorVm
     end
   end
 
+  def mem
+    mem = {}
+    @wmem.each do |m|
+      mem[m] = @program[m]
+    end
+    mem
+  end
+  def cheat
+    @debug = true
+    record
+    "take tablet\nuse tablet\ndoorway\nnorth\nnorth\nbridge\ncontinue\ndown\neast\ntake empty lantern\nwest\nwest\npassage\nladder\nwest\nsouth\nnorth\ntake can\nuse can\nwest\nuse lantern\n"
+  end
+
+  def record
+    @recording = true
+  end
+
   def run
     while !halt do
       op, _ = get_arg
       op ||= 0
       step(op)
     end
+    puts @recorded if @recording
   end
 
   def parse_program(input)
