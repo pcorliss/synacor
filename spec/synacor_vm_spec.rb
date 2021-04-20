@@ -278,6 +278,23 @@ describe SynacorVm do
         expect(vm.halt).to be_truthy
       end
     end
+
+    describe '#in' do
+      it 'read a character from the terminal and write its ascii code to <a>' do
+        vm.program.unshift(32768)
+        allow(STDIN).to receive(:gets) { "@\n" }
+        vm.step(20)
+        expect(vm.registers[0]).to eq(64)
+      end
+
+      it 'pulls all passed chars' do
+        vm.program.unshift(32768, 32768)
+        allow(STDIN).to receive(:gets) { "@\n" }
+        vm.step(20)
+        vm.step(20)
+        expect(vm.registers[0]).to eq(10)
+      end
+    end
   end
 
   describe "#parse_program" do

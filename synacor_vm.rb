@@ -7,6 +7,7 @@ class SynacorVm
     @halt = false
     @pos = 0
     @stack = []
+    @stdin_buffer = []
   end
 
   def get_arg
@@ -106,6 +107,14 @@ class SynacorVm
     when 19 # out
       _, a_val = get_arg
       print a_val.chr
+    when 20 # in
+      # puts "Prog: #{@program[@pos...(@pos+10)]}"
+      # puts "Reg: #{@registers}"
+      a, _ = get_arg
+      if @stdin_buffer.empty?
+        @stdin_buffer = STDIN.gets().chars.map(&:ord)
+      end
+      @registers[a - 32768] = @stdin_buffer.shift
     when 21 #noop
     else
       puts "Unhandled OpCode encountered: #{op} @ #{@pos}"
