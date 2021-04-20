@@ -125,6 +125,7 @@ class SynacorVm
         puts "Memor: #{@program[2733]}" if @debug
         str = STDIN.gets()
         str = cheat if str == "cheat\n"
+        str = solve_coins if str == "solve_coins\n"
         if str == "debug\n"
           str = "\n"
           binding.pry
@@ -149,10 +150,28 @@ class SynacorVm
     end
     mem
   end
+
   def cheat
     @debug = true
     record
-    "take tablet\nuse tablet\ndoorway\nnorth\nnorth\nbridge\ncontinue\ndown\neast\ntake empty lantern\nwest\nwest\npassage\nladder\nwest\nsouth\nnorth\ntake can\nuse can\nwest\nuse lantern\n"
+    "take tablet\nuse tablet\ndoorway\nnorth\nnorth\nbridge\ncontinue\ndown\neast\ntake empty lantern\nwest\nwest\npassage\nladder\nwest\nsouth\nnorth\ntake can\nuse can\nwest\nuse lantern\nladder\ndarkness\ncontinue\nwest\nwest\nwest\nwest\nnorth\ntake red coin\nnorth\nwest\ntake blue coin\nup\ntake shiny coin\ndown\neast\neast\ntake concave coin\ndown\ntake corroded coin\nup\nwest\nuse blue coin\nuse red coin\nuse shiny coin\nuse concave coin\nuse corroded coin\nnorth\ntake teleporter\nuse teleporter\n"
+  end
+
+  COINS = [
+    "red coin",
+    "corroded coin",
+    "shiny coin",
+    "concave coin",
+    "blue coin",
+  ]
+
+  def solve_coins
+    str = ''
+    COINS.permutation.each do |perm|
+      str << "use " + perm.join("\nuse ") + "\n"
+      str << "take " + perm.join("\ntake ") + "\n"
+    end
+    str
   end
 
   def record
