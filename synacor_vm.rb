@@ -74,7 +74,7 @@ class SynacorVm
     a_val = a && a >= 32768 ? @registers[a - 32768] : a
     if @current.empty?
       @current.push(@pos)
-      @current.push(OP_LOOKUP[a])
+      @current.push(a ? OP_LOOKUP[a] : nil)
     end
     # else
     #   @current.push(a)
