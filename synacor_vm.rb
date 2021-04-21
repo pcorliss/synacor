@@ -44,101 +44,231 @@ class SynacorVm
     noop
   )
 
+  ARG_LOOKUP = [
+    0,
+    2,
+    1,
+    1,
+    3,
+    3,
+    1,
+    2,
+    2,
+    3,
+    3,
+    3,
+    3,
+    3,
+    2,
+    2,
+    2,
+    1,
+    0,
+    1,
+    1,
+    0,
+  ]
+
+  def call_6027
+    raise "less than zero" if @registers[0] < 0 || @registers[1] < 0
+
+    if @registers[0] == 0
+      @registers[0] = @registers[1] + 1
+      return
+    end
+
+    if @registers[1] == 0
+      @registers[0] -= 1
+      @registers[1] = @registers[7]
+      call_6027
+      return
+    end
+
+    @stack.push(@registers[0])
+    @registers[1] -= 1
+    call_6027
+    @registers[1] = @registers[0]
+    @registers[0] = @stack.pop - 1
+    call_6027
+    return
+  end
+
+  def call_6027_ab(a, b)
+    raise "less than zero" if a < 0 || b < 0
+
+    if a == 0
+      a = b + 1
+      return [a, b]
+    end
+
+    if b == 0
+      a -= 1
+      b = @registers[7]
+      return call_6027_ab(a, b)
+    end
+
+    tmp = a
+    b -= 1
+    b, _ = call_6027_ab(a, b)
+    a = tmp - 1
+    return call_6027_ab(a, b)
+  end
+
+  def call_6027_memo(a, b)
+    @cache ||= {}
+    key = [a, b]
+    return @cache[key] if @cache[key]
+
+    raise "less than zero" if a < 0 || b < 0
+
+    if a == 0
+      a = b + 1
+      @cache[key] = [a,b]
+      return @cache[key]
+    end
+
+    if b == 0
+      a -= 1
+      b = @registers[7]
+      @cache[key] = call_6027_memo(a, b)
+      return @cache[key]
+    end
+
+    tmp = a
+    b -= 1
+    b, _ = call_6027_memo(a, b)
+    a = tmp - 1
+    @cache[key] = call_6027_memo(a, b)
+    return @cache[key]
+  end
+
   def get_arg
     a = @program[@pos]
     a_val = a && a >= 32768 ? @registers[a - 32768] : a
     if @current.empty?
       @current.push(@pos)
       @current.push(OP_LOOKUP[a])
-    else
-      @current.push(a)
-      @current.push(a_val) if a >= 32768
     end
+    # else
+    #   @current.push(a)
+    #   @current.push(a_val) if a >= 32768
+    # end
     @pos += 1
     [a, a_val]
   end
 
   def step(op)
+    if @pos == 5490
+      @registers[0] = 3
+      @registers[1] = 1
+    end
+
+    if @pos == 5492
+      puts "Registers: #{@registers}"
+    end
+
+    if @pos == 6028
+      cnt = @stack.count - 12
+      @log.push(['*', '*'*cnt, @registers[0], @registers[1]])
+    end
+
     case op
     when 0 # halt
       @halt = true
     when 1 # set
       a, _ = get_arg
-      _, b_val = get_arg
+      b, b_val = get_arg
+      @current.concat ["r#{a - 32768}", b_val, '-', a, b]
       @registers[a - 32768] = b_val
     when 2 # push
-      _, a_val = get_arg
+      a, a_val = get_arg
+      @current.concat [a_val, '-', a]
       @stack.push(a_val)
     when 3 # pop
       a, _ = get_arg
       raise "Stack Empty!" if @stack.empty?
       @registers[a - 32768] = @stack.pop
+      @current.concat ["r#{a - 32768}", @registers[a - 32768], '-', a]
     when 4 # eq
       a, _ = get_arg
-      _, b_val = get_arg
-      _, c_val = get_arg
+      b, b_val = get_arg
+      c, c_val = get_arg
       @registers[a - 32768] = b_val == c_val ? 1 : 0
-    when 5 # eq
+      @current.concat ["r#{a - 32768}", b_val, c_val, '-', @registers[a - 32768], '-', a, b, c]
+    when 5 # gt
       a, _ = get_arg
-      _, b_val = get_arg
-      _, c_val = get_arg
+      b, b_val = get_arg
+      c, c_val = get_arg
       @registers[a - 32768] = b_val > c_val ? 1 : 0
+      @current.concat ["r#{a - 32768}", b_val, c_val, '-', @registers[a - 32768], '-', a, b, c]
     when 6 # jmp
-      _, a_val = get_arg
+      a, a_val = get_arg
+      @current.concat [a_val, '-', a]
       @pos = a_val
     when 7 # jt
-      _, a_val = get_arg
-      _, b_val = get_arg
+      a, a_val = get_arg
+      b, b_val = get_arg
+      @current.concat [a_val, b_val, '-', !a_val.zero?, '-', a, b]
       @pos = b_val if !a_val.zero?
     when 8 # jf
-      _, a_val = get_arg
-      _, b_val = get_arg
+      a, a_val = get_arg
+      b, b_val = get_arg
+      @current.concat [a_val, b_val, '-', a_val.zero?, '-', a, b]
       @pos = b_val if a_val.zero?
     when 9 # add
       a, _ = get_arg
-      _, b_val = get_arg
-      _, c_val = get_arg
+      b, b_val = get_arg
+      c, c_val = get_arg
       @registers[a - 32768] = (b_val + c_val) % 32768
+      @current.concat ["r#{a - 32768}", b_val, c_val, '-', @registers[a - 32768], '-', a, b, c]
     when 10 # mult
       a, _ = get_arg
-      _, b_val = get_arg
-      _, c_val = get_arg
+      b, b_val = get_arg
+      c, c_val = get_arg
       @registers[a - 32768] = (b_val * c_val) % 32768
+      @current.concat ["r#{a - 32768}", b_val, c_val, '-', @registers[a - 32768], '-', a, b, c]
     when 11 # mod
       a, _ = get_arg
-      _, b_val = get_arg
-      _, c_val = get_arg
+      b, b_val = get_arg
+      c, c_val = get_arg
       @registers[a - 32768] = b_val % c_val
+      @current.concat ["r#{a - 32768}", b_val, c_val, '-', @registers[a - 32768], '-', a, b, c]
     when 12 # and
       a, _ = get_arg
-      _, b_val = get_arg
-      _, c_val = get_arg
+      b, b_val = get_arg
+      c, c_val = get_arg
       @registers[a - 32768] = b_val & c_val
+      @current.concat ["r#{a - 32768}", b_val, c_val, '-', @registers[a - 32768], '-', a, b, c]
     when 13 # or
       a, _ = get_arg
-      _, b_val = get_arg
-      _, c_val = get_arg
+      b, b_val = get_arg
+      c, c_val = get_arg
       @registers[a - 32768] = b_val | c_val
+      @current.concat ["r#{a - 32768}", b_val, c_val, '-', @registers[a - 32768], '-', a, b, c]
     when 14 # not - 15-bit inverse
       a, _ = get_arg
-      _, b_val = get_arg
+      b, b_val = get_arg
       val = 0
       15.times do |n|
         val += 2**n if b_val[n] == 0
       end
       @registers[a - 32768] = val
+      @current.concat ["r#{a - 32768}", b_val, '-', @registers[a - 32768], '-', a, b]
     when 15 # rmem
       a, _ = get_arg
-      _, b_val = get_arg
+      b, b_val = get_arg
       @registers[a - 32768] = @program[b_val]
+      @current.concat ["r#{a - 32768}", b_val, '-', @registers[a - 32768], '-', a, b]
     when 16 # wmem
-      _, a_val = get_arg
-      _, b_val = get_arg
+      a, a_val = get_arg
+      b, b_val = get_arg
       # @wmem.add(a_val)
       # puts "Mem: #{a_val} = #{b_val}" if @debug
       @program[a_val] = b_val
+      @current.concat [a_val, b_val, '-', a, b]
     when 17 # call
       _, a_val = get_arg
+      @current.concat [a_val, '-', @pos, '-', a]
       @stack.push(@pos)
       @pos = a_val
     when 18 # ret
@@ -146,9 +276,11 @@ class SynacorVm
         @halt = true
       else
         @pos = @stack.pop
+        @current.concat [@pos]
       end
     when 19 # out
-      _, a_val = get_arg
+      a, a_val = get_arg
+      @current.concat [a_val.chr, '-', a]
       print a_val.chr
     when 20 # in
       # puts "Prog: #{@program[@pos...(@pos+10)]}"
@@ -162,12 +294,46 @@ class SynacorVm
         str = cheat if str == "cheat\n"
         str = solve_coins if str == "solve_coins\n"
 
+        if str == "save\n"
+          @backup = [@pos, @stack.clone, @registers.clone, @program.clone]
+          str = "\n"
+        end
+
+        if str == "restore\n"
+          @pos, @stack, @registers, @program = @backup
+          str = "\n"
+        end
+
+        if str.start_with? 'set '
+          _, n = str.split(' ')
+          @registers[7] = n.to_i
+        end
+
+        if str == "registers\n"
+          puts @registers.inspect
+        end
+
         if str == "export\n"
           str = "use teleporter\n"
           @log = []
           @export = true
-          @counter = 1000000
-          @registers[7] = 4499
+          @counter = 1_000_000
+          @registers[7] = 3
+        end
+
+        if str == "skip teleport check\n"
+          @program[5489] = 1
+          @program[5490] = 32768
+          @program[5491] = 6
+          @program[5492] = 1
+          @program[5493] = 32769
+          @program[5494] = 1
+          @registers[7] = 25734
+        end
+
+        if str == "finish\n"
+          @counter = 0
+          str = "\n"
         end
 
         if str == "debug\n"
@@ -185,7 +351,7 @@ class SynacorVm
       @pos -= 3
       # @halt = true
     end
-    @log.push(@current)
+    @log.push(@current) if @export
     @current = []
     @counter -= 1 if @export
   end
@@ -238,6 +404,30 @@ class SynacorVm
             fh.puts"#{pos}: #{rest.join(' ')}"
           end
         end
+
+        # positions = Set.new @log.map(&:first).sort
+        # #
+        # # # binding.pry
+        # #
+        # File.open('program.inst', 'w') do |fh|
+        #   i = 0
+        #   while i < @program.length do
+        #     if positions.include? i
+        #       op_code = @program[i]
+        #       fh.print "#{i}: #{OP_LOOKUP[op_code]} "
+        #       args = []
+        #       ARG_LOOKUP[op_code].times do |j|
+        #         i += 1
+        #         args << @program[i]
+        #       end
+        #       fh.print args.join(' ')
+        #       fh.print "\n"
+        #     else
+        #       fh.puts "#{i}: #{@program[i]}"
+        #     end
+        #     i += 1
+        #   end
+        # end
       end
     end
     puts @recorded if @recording
