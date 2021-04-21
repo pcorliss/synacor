@@ -69,79 +69,6 @@ class SynacorVm
     0,
   ]
 
-  def call_6027
-    raise "less than zero" if @registers[0] < 0 || @registers[1] < 0
-
-    if @registers[0] == 0
-      @registers[0] = @registers[1] + 1
-      return
-    end
-
-    if @registers[1] == 0
-      @registers[0] -= 1
-      @registers[1] = @registers[7]
-      call_6027
-      return
-    end
-
-    @stack.push(@registers[0])
-    @registers[1] -= 1
-    call_6027
-    @registers[1] = @registers[0]
-    @registers[0] = @stack.pop - 1
-    call_6027
-    return
-  end
-
-  def call_6027_ab(a, b)
-    raise "less than zero" if a < 0 || b < 0
-
-    if a == 0
-      a = b + 1
-      return [a, b]
-    end
-
-    if b == 0
-      a -= 1
-      b = @registers[7]
-      return call_6027_ab(a, b)
-    end
-
-    tmp = a
-    b -= 1
-    b, _ = call_6027_ab(a, b)
-    a = tmp - 1
-    return call_6027_ab(a, b)
-  end
-
-  def call_6027_memo(a, b)
-    @cache ||= {}
-    key = [a, b]
-    return @cache[key] if @cache[key]
-
-    raise "less than zero" if a < 0 || b < 0
-
-    if a == 0
-      a = b + 1
-      @cache[key] = [a,b]
-      return @cache[key]
-    end
-
-    if b == 0
-      a -= 1
-      b = @registers[7]
-      @cache[key] = call_6027_memo(a, b)
-      return @cache[key]
-    end
-
-    tmp = a
-    b -= 1
-    b, _ = call_6027_memo(a, b)
-    a = tmp - 1
-    @cache[key] = call_6027_memo(a, b)
-    return @cache[key]
-  end
-
   def get_arg
     a = @program[@pos]
     a_val = a && a >= 32768 ? @registers[a - 32768] : a
@@ -289,10 +216,13 @@ class SynacorVm
         # puts "Regst: #{@registers}" if @debug
         # puts "Stack: #{@stack}" if @debug
         # puts "Posit: #{@pos}" if @debug
-        # puts "Memor: #{@program[2733]}" if @debug
+        puts "Loc: #{@program[2733]}" if @debug
+        puts "Orb: #{@program[3952]}" if @debug
         str = STDIN.gets()
         str = cheat if str == "cheat\n"
+        str = vault if str == "goto vault\n"
         str = solve_coins if str == "solve_coins\n"
+        str = solve_grid if str == "solve_grid\n"
 
         if str == "save\n"
           @backup = [@pos, @stack.clone, @registers.clone, @program.clone]
@@ -321,14 +251,9 @@ class SynacorVm
           @registers[7] = 3
         end
 
-        if str == "skip teleport check\n"
-          @program[5489] = 1
-          @program[5490] = 32768
-          @program[5491] = 6
-          @program[5492] = 1
-          @program[5493] = 32769
-          @program[5494] = 1
-          @registers[7] = 25734
+        if str == "reprogram\n"
+          reprogram_teleporter
+          str = "use teleporter\n"
         end
 
         if str == "finish\n"
@@ -364,10 +289,28 @@ class SynacorVm
     mem
   end
 
+  def reprogram_teleporter
+    @program[5489] = 1
+    @program[5490] = 32768
+    @program[5491] = 6
+    @program[5492] = 1
+    @program[5493] = 32769
+    @program[5494] = 1
+    @registers[7] = 25734
+  end
+
   def cheat
     @debug = true
     record
     "take tablet\nuse tablet\ndoorway\nnorth\nnorth\nbridge\ncontinue\ndown\neast\ntake empty lantern\nwest\nwest\npassage\nladder\nwest\nsouth\nnorth\ntake can\nuse can\nwest\nuse lantern\nladder\ndarkness\ncontinue\nwest\nwest\nwest\nwest\nnorth\ntake red coin\nnorth\nwest\ntake blue coin\nup\ntake shiny coin\ndown\neast\neast\ntake concave coin\ndown\ntake corroded coin\nup\nwest\nuse blue coin\nuse red coin\nuse shiny coin\nuse concave coin\nuse corroded coin\nnorth\ntake teleporter\nuse teleporter\ntake business card\ntake strange book\n"
+  end
+
+  def vault
+    "north\nnorth\nnorth\nnorth\nnorth\nnorth\nnorth\neast\ntake journal\nwest\nnorth\nnorth\n"
+  end
+
+  def solve_grid
+    ["take orb", "north", "east", "east", "north", "west", "south", "east", "east", "west", "north", "north", "east", "vault", "take mirror", "use mirror"].join("\n") + "\n"
   end
 
   COINS = [
